@@ -57,11 +57,81 @@ class OrganizationController extends Controller
         $user = $request->user();
 
         if (!$user->organizations()->where('organization_id', $organization->id)->exists()) {
-            $user->organizations()->attach($organization->id);
-            return response()->json(['message' => 'Successfully joined organization.'], 200);
+            // Check if request already exists
+            $existingRequest = \App\Models\OrganizationRequest::where('user_id', $user->id)
+                ->where('organization_id', $organization->id)
+                ->where('status', 'pending')
+                ->first();
+
+            if ($existingRequest) {
+                return response()->json(['message' => 'Join request is already pending.'], 400);
+            }
+
+            \App\Models\OrganizationRequest::create([
+                'user_id' => $user->id,
+                'organization_id' => $organization->id,
+                'status' => 'pending'
+            ]);
+
+            return response()->json(['message' => 'Join request sent successfully.'], 200);
         }
 
         return response()->json(['message' => 'Already a member.'], 400);
+    }
+
+    public function requests(Request $request, $id)
+    {
+        $organization = Organization::findOrFail($id);
+        $requests = \App\Models\OrganizationRequest::where('organization_id', $id)
+            ->where('status', 'pending')
+            ->with('user:id,name,handle,email')
+            ->get();
+            
+        return response()->json($requests);
+    }
+
+    public function acceptRequest(Request $request, $id, $requestId)
+    {
+        $organization = Organization::findOrFail($id);
+        
+        $request->validate([
+            'role_id' => 'required|exists:roles,id'
+        ]);
+
+        $joinRequest = \App\Models\OrganizationRequest::where('id', $requestId)
+            ->where('organization_id', $id)
+            ->firstOrFail();
+
+        if ($joinRequest->status !== 'pending') {
+            return response()->json(['message' => 'Request is no longer pending.'], 400);
+        }
+
+        DB::beginTransaction();
+        try {
+            $joinRequest->update(['status' => 'approved']);
+            
+            // Add user to organization
+            $joinRequest->user->organizations()->attach($id);
+            
+            // Assign active role
+            $joinRequest->user->roles()->attach($request->role_id, ['organization_id' => $id]);
+            
+            DB::commit();
+            return response()->json(['message' => 'Request accepted safely']);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['message' => 'Acceptance failed', 'error' => $e->getMessage()], 500);
+        }
+    }
+
+    public function rejectRequest(Request $request, $id, $requestId)
+    {
+        $joinRequest = \App\Models\OrganizationRequest::where('id', $requestId)
+            ->where('organization_id', $id)
+            ->firstOrFail();
+
+        $joinRequest->update(['status' => 'rejected']);
+        return response()->json(['message' => 'Request rejected cleanly']);
     }
 
     public function store(CreateOrganizationRequest $request)
@@ -147,8 +217,8 @@ class OrganizationController extends Controller
 
         return response()->json([
             'organization' => $organization,
-            'role' => ['id' => $activeRole->id, 'name' => $activeRole->name, 'node_id' => $activeRole->pivot->node_id ?? null],
-            'permissions' => $activeRole->permissions()->pluck('key'),
+            'role' => $activeRole ? ['id' => $activeRole->id, 'name' => $activeRole->name, 'node_id' => $activeRole->pivot->node_id ?? null] : null,
+            'permissions' => $activeRole ? $activeRole->permissions()->pluck('key') : [],
             'all_roles' => $userRoles->map(function ($r) {
                 return ['id' => $r->id, 'name' => $r->name, 'node_id' => $r->pivot->node_id ?? null];
             })->values()
@@ -159,14 +229,16 @@ class OrganizationController extends Controller
     {
         $organization = Organization::findOrFail($id);
 
-        $members = $organization->members()->get()->map(function ($member) use ($id) {
-            $roles = $member->roles()->wherePivot('organization_id', $id)->get();
+        // Eager load the roles specific to this organization to eliminate N+1 queries
+        $members = $organization->members()->with(['roles' => function ($query) use ($id) {
+            $query->wherePivot('organization_id', $id);
+        }])->get()->map(function ($member) {
             return [
                 'id' => $member->id,
                 'name' => $member->name,
                 'handle' => $member->handle,
                 'email' => $member->email,
-                'roles' => $roles->map(function ($r) {
+                'roles' => $member->roles->map(function ($r) {
                     return [
                         'id' => $r->id,
                         'name' => $r->name,

@@ -24,6 +24,14 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::patch('/organizations/{id}', [OrganizationController::class, 'update'])
         ->middleware('permission:org.profile.edit');
 
+    // Join Requests
+    Route::get('/organizations/{id}/requests', [OrganizationController::class, 'requests'])
+        ->middleware('permission:org.members.edit');
+    Route::post('/organizations/{id}/requests/{requestId}/accept', [OrganizationController::class, 'acceptRequest'])
+        ->middleware('permission:org.members.edit');
+    Route::post('/organizations/{id}/requests/{requestId}/reject', [OrganizationController::class, 'rejectRequest'])
+        ->middleware('permission:org.members.edit');
+
     // Roles & Permissions
     Route::get('/permissions', [\App\Http\Controllers\RoleController::class, 'permissions']);
     Route::get('/organizations/{id}/roles', [\App\Http\Controllers\RoleController::class, 'index']);
@@ -40,7 +48,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/organizations/{id}/nodes', [\App\Http\Controllers\NodeController::class, 'index']);
     Route::post('/organizations/{id}/nodes', [\App\Http\Controllers\NodeController::class, 'store']);
     Route::put('/organizations/{id}/nodes/{nodeId}', [\App\Http\Controllers\NodeController::class, 'update'])
-        ->middleware('permission:node.edit');
+        ->middleware('permission:nodes.name.edit');
 
     // Reports (Permissions checked within controller)
     Route::get('/organizations/{id}/reports/created', [\App\Http\Controllers\ReportController::class, 'createdReports']);
