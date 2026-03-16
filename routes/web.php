@@ -16,3 +16,8 @@ Route::get('/migrate', function () {
         'output' => Artisan::output()
     ]);
 });
+
+// Minimal Keep-Alive Hook for cron-job.org
+Route::get('/ping', function () {
+    return 'OK';
+});
