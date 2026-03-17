@@ -1,0 +1,303 @@
+{
+    "nodes": [
+        {
+            "id": 1,
+            "organization_id": 5,
+            "parent_id": null,
+            "name": "soet",
+            "type": "folder",
+            "created_at": "2026-03-02 03:01:08",
+            "updated_at": "2026-03-02 03:01:08"
+        },
+        {
+            "id": 2,
+            "organization_id": 5,
+            "parent_id": null,
+            "name": "som",
+            "type": "folder",
+            "created_at": "2026-03-02 03:01:16",
+            "updated_at": "2026-03-02 03:01:16"
+        },
+        {
+            "id": 4,
+            "organization_id": 5,
+            "parent_id": 3,
+            "name": "Section A",
+            "type": "folder",
+            "created_at": "2026-03-02 06:43:08",
+            "updated_at": "2026-03-02 06:43:08"
+        },
+        {
+            "id": 5,
+            "organization_id": 5,
+            "parent_id": 3,
+            "name": "Section B",
+            "type": "folder",
+            "created_at": "2026-03-02 06:43:19",
+            "updated_at": "2026-03-02 14:53:39"
+        },
+        {
+            "id": 6,
+            "organization_id": 5,
+            "parent_id": null,
+            "name": "sod",
+            "type": "folder",
+            "created_at": "2026-03-02 14:57:43",
+            "updated_at": "2026-03-02 14:57:43"
+        },
+        {
+            "id": 7,
+            "organization_id": 5,
+            "parent_id": 1,
+            "name": "CSE",
+            "type": "folder",
+            "created_at": "2026-03-04 06:17:44",
+            "updated_at": "2026-03-04 06:17:44"
+        },
+        {
+            "id": 3,
+            "organization_id": 5,
+            "parent_id": 1,
+            "name": "AIML",
+            "type": "folder",
+            "created_at": "2026-03-02 03:01:59",
+            "updated_at": "2026-03-04 06:17:54"
+        },
+        {
+            "id": 8,
+            "organization_id": 5,
+            "parent_id": 7,
+            "name": "Section B",
+            "type": "folder",
+            "created_at": "2026-03-04 06:18:13",
+            "updated_at": "2026-03-04 06:18:13"
+        },
+        {
+            "id": 9,
+            "organization_id": 5,
+            "parent_id": 8,
+            "name": "batch 1",
+            "type": "folder",
+            "created_at": "2026-03-05 18:01:32",
+            "updated_at": "2026-03-05 18:01:32"
+        },
+        {
+            "id": 10,
+            "organization_id": 5,
+            "parent_id": 4,
+            "name": "batch 1",
+            "type": "folder",
+            "created_at": "2026-03-05 18:13:16",
+            "updated_at": "2026-03-05 18:13:16"
+        },
+        {
+            "id": 12,
+            "organization_id": 5,
+            "parent_id": 1,
+            "name": "IT",
+            "type": "folder",
+            "created_at": "2026-03-05 18:27:14",
+            "updated_at": "2026-03-05 18:27:14"
+        },
+        {
+            "id": 11,
+            "organization_id": 5,
+            "parent_id": 3,
+            "name": "section C",
+            "type": "folder",
+            "created_at": "2026-03-05 18:13:35",
+            "updated_at": "2026-03-06 02:04:20"
+        },
+        {
+            "id": 13,
+            "organization_id": 5,
+            "parent_id": null,
+            "name": "sos",
+            "type": "folder",
+            "created_at": "2026-03-06 02:04:54",
+            "updated_at": "2026-03-06 02:04:54"
+        },
+        {
+            "id": 14,
+            "organization_id": 6,
+            "parent_id": null,
+            "name": "main campus",
+            "type": "folder",
+            "created_at": "2026-03-07 06:27:08",
+            "updated_at": "2026-03-07 06:27:08"
+        },
+        {
+            "id": 15,
+            "organization_id": 6,
+            "parent_id": null,
+            "name": "not main campus",
+            "type": "folder",
+            "created_at": "2026-03-07 06:27:19",
+            "updated_at": "2026-03-07 06:27:19"
+        },
+        {
+            "id": 16,
+            "organization_id": 6,
+            "parent_id": 15,
+            "name": "cse",
+            "type": "folder",
+            "created_at": "2026-03-07 06:27:28",
+            "updated_at": "2026-03-07 06:27:28"
+        },
+        {
+            "id": 17,
+            "organization_id": 6,
+            "parent_id": 14,
+            "name": "aiml",
+            "type": "folder",
+            "created_at": "2026-03-07 06:27:41",
+            "updated_at": "2026-03-07 06:27:41"
+        },
+        {
+            "id": 18,
+            "organization_id": 6,
+            "parent_id": 17,
+            "name": "section a",
+            "type": "folder",
+            "created_at": "2026-03-07 06:27:56",
+            "updated_at": "2026-03-07 06:27:56"
+        }
+    ],
+    "roles": [
+        {
+            "id": 1,
+            "organization_id": 1,
+            "name": "Owner",
+            "created_at": "2026-02-28 04:40:04",
+            "updated_at": "2026-02-28 04:40:04"
+        },
+        {
+            "id": 2,
+            "organization_id": 5,
+            "name": "Owner",
+            "created_at": "2026-02-28 04:47:40",
+            "updated_at": "2026-02-28 04:47:40"
+        },
+        {
+            "id": 3,
+            "organization_id": 5,
+            "name": "Teaching Staff",
+            "created_at": "2026-03-03 03:09:05",
+            "updated_at": "2026-03-03 03:09:05"
+        },
+        {
+            "id": 4,
+            "organization_id": 5,
+            "name": "Head of Department",
+            "created_at": "2026-03-03 03:10:11",
+            "updated_at": "2026-03-03 03:10:11"
+        },
+        {
+            "id": 5,
+            "organization_id": 5,
+            "name": "student",
+            "created_at": "2026-03-03 16:22:19",
+            "updated_at": "2026-03-03 16:22:19"
+        },
+        {
+            "id": 6,
+            "organization_id": 6,
+            "name": "Owner",
+            "created_at": "2026-03-07 03:03:12",
+            "updated_at": "2026-03-07 03:03:12"
+        },
+        {
+            "id": 7,
+            "organization_id": 6,
+            "name": "student",
+            "created_at": "2026-03-07 03:03:12",
+            "updated_at": "2026-03-07 03:03:12"
+        }
+    ],
+    "role_user": [
+        {
+            "id": 1,
+            "user_id": 1,
+            "role_id": 1,
+            "organization_id": 1,
+            "node_id": null
+        },
+        {
+            "id": 7,
+            "user_id": 1,
+            "role_id": 2,
+            "organization_id": 5,
+            "node_id": null
+        },
+        {
+            "id": 10,
+            "user_id": 2,
+            "role_id": 3,
+            "organization_id": 5,
+            "node_id": 4
+        },
+        {
+            "id": 11,
+            "user_id": 2,
+            "role_id": 4,
+            "organization_id": 5,
+            "node_id": 3
+        },
+        {
+            "id": 12,
+            "user_id": 3,
+            "role_id": 5,
+            "organization_id": 5,
+            "node_id": 5
+        },
+        {
+            "id": 13,
+            "user_id": 4,
+            "role_id": 5,
+            "organization_id": 5,
+            "node_id": 8
+        },
+        {
+            "id": 15,
+            "user_id": 5,
+            "role_id": 5,
+            "organization_id": 5,
+            "node_id": 11
+        },
+        {
+            "id": 16,
+            "user_id": 1,
+            "role_id": 6,
+            "organization_id": 6,
+            "node_id": null
+        },
+        {
+            "id": 17,
+            "user_id": 4,
+            "role_id": 7,
+            "organization_id": 6,
+            "node_id": null
+        },
+        {
+            "id": 19,
+            "user_id": 3,
+            "role_id": 7,
+            "organization_id": 6,
+            "node_id": null
+        },
+        {
+            "id": 20,
+            "user_id": 5,
+            "role_id": 7,
+            "organization_id": 6,
+            "node_id": null
+        },
+        {
+            "id": 21,
+            "user_id": 6,
+            "role_id": 5,
+            "organization_id": 5,
+            "node_id": null
+        }
+    ]
+}

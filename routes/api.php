@@ -56,6 +56,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/organizations/{id}/reports/{reportId}/submissions', [\App\Http\Controllers\ReportController::class, 'submissions']);
     Route::post('/organizations/{id}/reports', [\App\Http\Controllers\ReportController::class, 'store']);
     Route::post('/organizations/{id}/reports/{reportId}/submit', [\App\Http\Controllers\ReportController::class, 'submit']);
+    
+    // New Hierarchy-Isolated Targets Retrieval Route
+    Route::get('/organizations/{id}/report-targets', [\App\Http\Controllers\ReportController::class, 'getTargets']);
 });
 
 Route::get('/organizations/check-uid/{uid}', [OrganizationController::class, 'checkUid']);

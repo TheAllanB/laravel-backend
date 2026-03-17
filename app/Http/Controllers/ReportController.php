@@ -15,31 +15,58 @@ use Illuminate\Support\Facades\Validator;
 
 class ReportController extends Controller
 {
-    // Helper to deeply verify permissions per organization.
-    private function hasPermission($user, $orgId, $permissionKey)
-    {
-        $roles = $user->roles()->wherePivot('organization_id', $orgId)->get();
-        foreach ($roles as $role) {
-            if ($role->permissions()->where('key', $permissionKey)->exists()) {
-                return true;
-            }
-        }
-        return false;
-    }
+    use \App\Traits\RoleContextHelper;
 
-    // Helper to get all descendant node IDs.
-    private function getDescendantNodeIds($nodeIds, $orgId)
+
+    public function getTargets(Request $request, $organizationId)
     {
-        if (empty($nodeIds))
-            return [];
-        $ids = $nodeIds;
-        $current = $nodeIds;
-        while (!empty($current)) {
-            $children = Node::where('organization_id', $orgId)->whereIn('parent_id', $current)->pluck('id')->toArray();
-            $current = array_diff($children, $ids);
-            $ids = array_merge($ids, $current);
+        $user = $request->user();
+        if (!$this->hasPermission($user, $organizationId, 'report.ask')) {
+            return response()->json(['status' => 'error', 'message' => 'Unauthorized. Missing report.ask permission.'], 403);
         }
-        return $ids;
+
+        $activeRole = $this->getActiveRoleContext($user, $organizationId, $request);
+        if (!$activeRole) {
+            return response()->json(['status' => 'error', 'message' => 'No active role context found in this organization.'], 403);
+        }
+
+        $userNodeIds = $activeRole->pivot->node_id ? [$activeRole->pivot->node_id] : [];
+        $isGlobal = is_null($activeRole->pivot->node_id);
+
+        if ($isGlobal) {
+            $nodes = Node::where('organization_id', $organizationId)->get();
+            $roles = \App\Models\Role::where('organization_id', $organizationId)->withCount('permissions')->with('permissions')->get();
+            $members = Organization::find($organizationId)->members()->with('roles')->get();
+        } else {
+            $inclusiveNodeIds = $this->getDescendantNodeIds($userNodeIds, $organizationId, true);
+            $strictNodeIds = $this->getDescendantNodeIds($userNodeIds, $organizationId, false);
+            
+            // Nodes: Show user's current node and everything downstream
+            $nodes = Node::whereIn('id', $inclusiveNodeIds)->get();
+            
+            // Roles: Only roles that are actively assigned strictly below the user
+            $allowedRoleIds = DB::table('role_user')
+                ->where('organization_id', $organizationId)
+                ->whereIn('node_id', $strictNodeIds)
+                ->pluck('role_id')
+                ->unique();
+            $roles = \App\Models\Role::whereIn('id', $allowedRoleIds)->withCount('permissions')->with('permissions')->get();
+            
+            // Users: Only users that hold a role strictly below the user
+            $allowedUserIds = DB::table('role_user')
+                ->where('organization_id', $organizationId)
+                ->whereIn('node_id', $strictNodeIds)
+                ->pluck('user_id')
+                ->unique();
+            $members = \App\Models\User::whereIn('id', $allowedUserIds)->with('roles')->get();
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'nodes' => $nodes,
+            'roles' => $roles,
+            'members' => $members
+        ]);
     }
 
     public function store(Request $request, $organizationId)
@@ -60,13 +87,39 @@ class ReportController extends Controller
             return response()->json(['status' => 'error', 'errors' => $validator->errors()], 422);
         }
 
-        $userNodeIds = $user->roles()->wherePivot('organization_id', $organizationId)->pluck('role_user.node_id')->filter()->unique()->toArray();
-        $isGlobal = $user->roles()->wherePivot('organization_id', $organizationId)->whereNull('role_user.node_id')->exists();
+        $activeRole = $this->getActiveRoleContext($user, $organizationId, $request);
+        if (!$activeRole) {
+            return response()->json(['status' => 'error', 'message' => 'No active role context found in this organization.'], 403);
+        }
 
-        $allowedNodeIds = $isGlobal ? null : $this->getDescendantNodeIds($userNodeIds, $organizationId);
+        $userNodeIds = $activeRole->pivot->node_id ? [$activeRole->pivot->node_id] : [];
+        $isGlobal = is_null($activeRole->pivot->node_id);
+
+        $inclusiveNodeIds = $isGlobal ? null : $this->getDescendantNodeIds($userNodeIds, $organizationId, true);
+        $strictNodeIds = $isGlobal ? null : $this->getDescendantNodeIds($userNodeIds, $organizationId, false);
 
         DB::beginTransaction();
         try {
+            foreach ($request->targets as $t) {
+                if (!$isGlobal) {
+                    if ($t['target_type'] == 'node' && !in_array($t['target_id'], $inclusiveNodeIds)) {
+                        throw new \Exception("Cannot target node outside of your hierarchical scope.");
+                    }
+                    if ($t['target_type'] == 'user') {
+                        $userNodes = DB::table('role_user')->where('user_id', $t['target_id'])->where('organization_id', $organizationId)->pluck('node_id')->toArray();
+                        if (empty(array_intersect($userNodes, $strictNodeIds))) {
+                            throw new \Exception("Cannot target a user outside of your strict downstream scope.");
+                        }
+                    }
+                    if ($t['target_type'] == 'role') {
+                        $roleExists = DB::table('role_user')->where('organization_id', $organizationId)->where('role_id', $t['target_id'])->whereIn('node_id', $strictNodeIds)->exists();
+                        if (!$roleExists) {
+                            throw new \Exception("Cannot target a role outside of your strict downstream scope.");
+                        }
+                    }
+                }
+            }
+
             $report = Report::create([
                 'organization_id' => $organizationId,
                 'creator_id' => $user->id,
@@ -87,11 +140,6 @@ class ReportController extends Controller
             }
 
             foreach ($request->targets as $t) {
-                if (!$isGlobal && $t['target_type'] == 'node') {
-                    if (!in_array($t['target_id'], $allowedNodeIds)) {
-                        throw new \Exception("Cannot target node outside of your hierarchical scope.");
-                    }
-                }
                 ReportTarget::create([
                     'report_id' => $report->id,
                     'target_type' => $t['target_type'],
@@ -116,24 +164,53 @@ class ReportController extends Controller
 
         $userRoles = $user->roles()->wherePivot('organization_id', $organizationId)->pluck('roles.id')->toArray();
         $userNodes = $user->roles()->wherePivot('organization_id', $organizationId)->pluck('role_user.node_id')->filter()->toArray();
+        $userIsGlobal = $user->roles()->wherePivot('organization_id', $organizationId)->whereNull('role_user.node_id')->exists();
 
         $reports = Report::where('organization_id', $organizationId)
-            ->whereHas('targets', function ($q) use ($user, $userRoles, $userNodes) {
+            ->whereHas('targets', function ($q) use ($user, $userRoles, $userNodes, $userIsGlobal) {
                 $q->where(function ($q2) use ($user) {
                     $q2->where('target_type', 'user')->where('target_id', $user->id);
                 })->orWhere(function ($q2) use ($userRoles) {
                     $q2->where('target_type', 'role')->whereIn('target_id', $userRoles);
-                })->orWhere(function ($q2) use ($userNodes) {
-                    $q2->where('target_type', 'node')->whereIn('target_id', $userNodes);
                 });
+                
+                if ($userIsGlobal) {
+                    $q->orWhere('target_type', 'node'); 
+                } else if (!empty($userNodes)) {
+                    $q->orWhere(function ($q2) use ($userNodes) {
+                        $q2->where('target_type', 'node')->whereIn('target_id', $userNodes);
+                    });
+                }
             })
             ->whereDoesntHave('submissions', function ($q) use ($user) {
                 $q->where('user_id', $user->id);
             })
-            ->with('questions')
+            ->with(['questions', 'creator.roles'])
             ->get();
 
-        return response()->json(['status' => 'success', 'reports' => $reports]);
+        // Prevent Upward Role Leakage & verify downstream intersections
+        $filteredReports = $reports->filter(function($report) use ($organizationId, $userNodes, $userIsGlobal) {
+            $creator = $report->creator;
+            if (!$creator) return true; // safety
+            
+            $creatorIsGlobal = $creator->roles()->wherePivot('organization_id', $organizationId)->whereNull('role_user.node_id')->exists();
+            if ($creatorIsGlobal) return true;
+            
+            // If the viewer is completely global, they can see EVERYTHING.
+            if ($userIsGlobal) return true;
+            
+            $creatorActiveRole = $creator->roles()->wherePivot('organization_id', $organizationId)->first();
+            $creatorNodeIds = $creatorActiveRole && $creatorActiveRole->pivot->node_id ? [$creatorActiveRole->pivot->node_id] : [];
+            $creatorInclusiveNodeIds = $this->getDescendantNodeIds($creatorNodeIds, $organizationId, true);
+            
+            // Check intersection. The report is only valid for this viewer if the viewer resides in at least one valid node reachable by the creator
+            if (!empty(array_intersect($userNodes, $creatorInclusiveNodeIds))) {
+                return true;
+            }
+            return false;
+        })->values();
+
+        return response()->json(['status' => 'success', 'reports' => $filteredReports]);
     }
 
     public function submit(Request $request, $organizationId, $reportId)

@@ -12,6 +12,8 @@ use Illuminate\Support\Facades\DB;
 
 class OrganizationController extends Controller
 {
+    use \App\Traits\RoleContextHelper;
+
     public function index(Request $request)
     {
         $query = Organization::query();
@@ -227,12 +229,32 @@ class OrganizationController extends Controller
 
     public function members(Request $request, $id)
     {
+        $user = $request->user();
         $organization = Organization::findOrFail($id);
 
+        $activeRole = $this->getActiveRoleContext($user, $id, $request);
+        $isGlobal = $activeRole && is_null($activeRole->pivot->node_id);
+
+        $query = $organization->members();
+
+        if ($activeRole && !$isGlobal) {
+            $userNodeIds = [$activeRole->pivot->node_id];
+            $inclusiveNodeIds = $this->getDescendantNodeIds($userNodeIds, $id, true);
+
+            // Filter members to only those who have a role in the allowed nodes
+            $allowedUserIds = DB::table('role_user')
+                ->where('organization_id', $id)
+                ->whereIn('node_id', $inclusiveNodeIds)
+                ->pluck('user_id')
+                ->unique();
+
+            $query->whereIn('users.id', $allowedUserIds);
+        }
+
         // Eager load the roles specific to this organization to eliminate N+1 queries
-        $members = $organization->members()->with(['roles' => function ($query) use ($id) {
+        $members = $query->with(['roles' => function ($query) use ($id) {
             $query->wherePivot('organization_id', $id);
-        }])->get()->map(function ($member) {
+        }])->get()->map(function ($member) use ($id) {
             return [
                 'id' => $member->id,
                 'name' => $member->name,
